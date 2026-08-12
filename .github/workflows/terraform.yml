@@ -5,6 +5,16 @@ on:
     branches: [prod]
   push:
     branches: [prod]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - destroy
 
 permissions:
   id-token: write   
@@ -22,7 +32,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::653082655400:role/GithubPipelinePracticeRole
-          aws-region: us-east-1   
+          aws-region: us-east-1  
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -32,8 +42,12 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -no-color
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'plan')
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
         if: github.event_name == 'push' && github.ref == 'refs/heads/prod'
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
